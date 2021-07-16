@@ -229,13 +229,14 @@ function initialize() {
             window.alert("檔案錯誤！");
             return;
           }
+          this.loading = true;
           this.defaults = result.defaults;
           this.cards = result.cards;
         });
         reader.readAsText(file);
       },
       cards() {
-        window.onbeforeunload = true;
+        window.onbeforeunload = () => true;
       },
       loadedCard(value) {
         this.processing = `卡片載入中... (${value}/${this.cards.length}) 請勿切換網頁或縮小。`;
@@ -283,6 +284,7 @@ function initialize() {
           })
         )}`;
         link.click();
+        window.onbeforeunload = null;
       },
       downloadAll() {
         this.loading = true;
@@ -343,7 +345,6 @@ function initialize() {
                 200
               );
             } else {
-              window.onbeforeunload = null;
               this.loading = false;
               this.processing = "載入中... 請勿切換網頁或縮小。";
               this.progress = 0;
