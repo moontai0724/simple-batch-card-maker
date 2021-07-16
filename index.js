@@ -250,7 +250,7 @@ function initialize() {
     methods: {
       createCards() {
         this.step++;
-        if (!this.text.replace(/\s/g, "")) return;
+        if (!this.text) return;
         this.loading = true;
         setTimeout(() => {
           let baseId = 1;
