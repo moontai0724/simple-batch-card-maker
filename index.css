@@ -1,0 +1,8 @@
+.card-container {
+  background-color: lightpink;
+}
+
+.v-overlay__content {
+  max-width: 100%;
+  word-break: break-all;
+}

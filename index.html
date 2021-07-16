@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>簡易批次卡片製作</title>
+
+    <!-- Normalize.css -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css" />
+
+    <!-- Noto-Sans Font -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&family=Noto+Sans+TC&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Vuetify -->
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Vue -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+    <!-- canvas txt breaker -->
+    <script src="canvas-txt.js"></script>
+
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <!-- FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+
+    <!-- Custom -->
+    <link rel="stylesheet" href="index.css" />
+    <script src="index.js"></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <v-app>
+        <v-main>
+          <v-row class="pa-2">
+            <v-card width="100%">
+              <v-card-title>基礎設定</v-card-title>
+              <v-card-text>
+                <v-stepper v-model="step" width="100%" flat>
+                  <v-stepper-header>
+                    <v-stepper-step editable step="1" :complete="!!image">
+                      選擇背景圖片
+                    </v-stepper-step>
+                    <v-divider></v-divider>
+                    <v-stepper-step editable step="2">
+                      調整預設設定
+                    </v-stepper-step>
+                    <v-divider></v-divider>
+                    <v-stepper-step editable step="3">
+                      匯入文字
+                    </v-stepper-step>
+                  </v-stepper-header>
+
+                  <v-stepper-items>
+                    <v-stepper-content step="1">
+                      <v-card flat>
+                        <v-card-title>選擇背景圖片</v-card-title>
+                        <v-card-text>
+                          <v-file-input
+                            v-model="file"
+                            accept="image/*"
+                            label="卡片背景圖片"
+                            placeholder="上傳卡片背景圖片"
+                            prepend-icon="mdi-camera"
+                          ></v-file-input>
+                          <v-img v-if="image" contain :src="image" />
+                        </v-card-text>
+                        <v-card-actions>
+                          <v-spacer></v-spacer>
+                          <v-btn
+                            color="primary"
+                            @click="step++"
+                            :disabled="!image"
+                          >
+                            下一步
+                          </v-btn>
+                        </v-card-actions>
+                      </v-card>
+                    </v-stepper-content>
+
+                    <v-stepper-content step="2" v-if="!!image">
+                      <v-card flat>
+                        <v-card-title>調整預設設定</v-card-title>
+                        <v-card-text>
+                          <card
+                            v-if="image && step == 2"
+                            :id="0"
+                            :image="image"
+                            :width="defaults.width"
+                            :padding="defaults.padding"
+                            :text="defaults.text"
+                            :shadow="defaults.shadow"
+                            @update="v => Object.assign(defaults, v)"
+                          ></card>
+                        </v-card-text>
+                        <v-card-actions>
+                          <v-spacer></v-spacer>
+                          <v-btn text @click="step--">上一步</v-btn>
+                          <v-btn color="primary" @click="step++">
+                            下一步
+                          </v-btn>
+                        </v-card-actions>
+                      </v-card>
+                    </v-stepper-content>
+
+                    <v-stepper-content step="3" v-if="!!image">
+                      <v-card flat>
+                        <v-card-title>匯入文字</v-card-title>
+                        <v-card-text>
+                          <v-text-field
+                            label="分隔符號"
+                            :rules="[value => !!value || '請填入分隔符號',]"
+                            :autofocus="!divider"
+                            v-model="divider"
+                            placeholder="請輸入一個作為分割文字的符號，如: ';' 或是輸入 '\n' 以換行分割"
+                            hint="用於將整段卡片文字分割成多個"
+                            hide-details="auto"
+                          ></v-text-field>
+                          <br />
+                          <v-textarea
+                            filled
+                            label="卡片文字"
+                            no-resize
+                            height="50vh"
+                            v-model="text"
+                          ></v-textarea>
+                        </v-card-text>
+                        <v-card-actions>
+                          <v-spacer></v-spacer>
+                          <v-btn text @click="step--">上一步</v-btn>
+                          <v-btn
+                            :disabled="loading"
+                            color="primary"
+                            @click="createCards"
+                          >
+                            完成
+                          </v-btn>
+                        </v-card-actions>
+                      </v-card>
+                    </v-stepper-content>
+                  </v-stepper-items>
+                </v-stepper>
+              </v-card-text>
+            </v-card>
+          </v-row>
+          <v-row>
+            <v-col class="d-flex" justify="space-around">
+              <v-btn
+                color="blue"
+                class="mx-2 flex-grow-1 white--text"
+                @click="saveConfig"
+              >
+                儲存所有設定與文字（不含圖片）
+                <v-icon right dark>mdi-content-save</v-icon>
+              </v-btn>
+              <v-btn
+                color="green"
+                class="mx-2 flex-grow-1 white--text"
+                @click="downloadAll"
+              >
+                全部打包下載
+                <v-icon right dark>mdi-download</v-icon>
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-row class="pa-2" justify="space-around">
+            <v-col
+              v-for="(card, index) in cards"
+              :key="card.id"
+              class="flex-grow-0"
+            >
+              <card
+                :id="card.id"
+                :content="card.content"
+                :image="image"
+                :width="card.width"
+                :padding="card.padding"
+                :text="card.text"
+                :shadow="card.shadow"
+                @loaded="++loadedCard"
+                @remove="removeCard(card)"
+                @update="v => Object.assign(card, v)"
+              ></card>
+            </v-col>
+          </v-row>
+        </v-main>
+      </v-app>
+
+      <v-overlay :value="loading">
+        <v-row style="max-width: 100%">
+          <v-col align="center">
+            <v-progress-circular indeterminate size="64"></v-progress-circular>
+          </v-col>
+        </v-row>
+        <v-row v-if="processing" style="max-width: 100%">
+          <v-col class="text-wrap" align="center">{{ processing }}</v-col>
+        </v-row>
+        <v-row v-if="progress" style="max-width: 100%">
+          <v-col align="center">
+            <v-progress-linear
+              background-color="#9FA8DA"
+              color="#1A237E"
+              :value="progress"
+              height="25"
+              striped
+            >
+              <strong>{{ Math.round(progress) }}%</strong>
+            </v-progress-linear>
+          </v-col>
+        </v-row>
+      </v-overlay>
+
+      <template v-if="false" id="template-card">
+        <v-card class="elevation-5">
+          <v-card-title>
+            第 {{ id }} 則 (目前實際大小: {{ size }})
+            <v-spacer></v-spacer>
+            <v-btn icon @click="remove">
+              <v-icon>mdi-delete-forever</v-icon>
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <canvas :id="`card-${id}`" class="card-canvas mx-auto"></canvas>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn
+              icon
+              tile
+              color="warning"
+              class="flex-grow-1"
+              @click="showSetting = !showSetting"
+            >
+              調整設定
+              <v-icon>
+                {{ showSetting ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+              </v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              tile
+              color="green"
+              class="flex-grow-1"
+              @click="download"
+            >
+              下載圖片
+              <v-icon>mdi-download</v-icon>
+            </v-btn>
+          </v-card-actions>
+          <v-expand-transition>
+            <div v-show="showSetting">
+              <v-divider></v-divider>
+              <v-tabs
+                v-model="tab"
+                fixed-tabs
+                color="pink"
+                background-color="pink lighten-5"
+              >
+                <v-tab href="#option-content">文字內容</v-tab>
+                <v-tab href="#option-padding">圖片與間距</v-tab>
+                <v-tab href="#option-text">文字</v-tab>
+                <v-tab href="#option-text-stroke">文字外框</v-tab>
+                <v-tab href="#option-shadow">陰影</v-tab>
+              </v-tabs>
+
+              <v-tabs-items v-model="tab">
+                <v-tab-item value="option-content">
+                  <v-card>
+                    <v-card-text>
+                      <v-textarea
+                        filled
+                        label="卡片文字"
+                        no-resize
+                        height="50vh"
+                        v-model="config.content"
+                      ></v-textarea>
+                    </v-card-text>
+                  </v-card>
+                </v-tab-item>
+                <v-tab-item value="option-padding">
+                  <v-card>
+                    <v-card-text>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="圖片寬度（大小）"
+                            v-model="config.width"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="上方間距"
+                            v-model="config.padding.top"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="左方間距"
+                            v-model="config.padding.left"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="右方間距"
+                            v-model="config.padding.right"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+                </v-tab-item>
+                <v-tab-item value="option-text">
+                  <v-card>
+                    <v-card-text>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="字體大小"
+                            v-model="config.text.size"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="文字間距"
+                            v-model="config.text.letterSpacing"
+                            suffix="px"
+                          />
+                        </v-col>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="文字行距"
+                            v-model="config.text.lineHeight"
+                            step="0.1"
+                            suffix="倍"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-select
+                            v-model="config.text.vAlign"
+                            :items="[{text:'上',value:'top'},{text:'中',value:'middle'},{text:'下',value:'bottom'}]"
+                            label="垂直對齊"
+                            required
+                          ></v-select>
+                        </v-col>
+                        <v-col>
+                          <v-select
+                            v-model="config.text.align"
+                            :items="[{text:'左',value:'left'},{text:'中',value:'center'},{text:'右',value:'right'}]"
+                            label="水平對齊"
+                            required
+                          ></v-select>
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-color-picker
+                            class="mx-auto"
+                            v-model="config.text.color"
+                            v-once
+                            :width="config.width"
+                            dot-size="25"
+                            mode="hexa"
+                            show-swatches
+                            swatches-max-height="100"
+                          ></v-color-picker>
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+                </v-tab-item>
+                <v-tab-item value="option-text-stroke">
+                  <v-card>
+                    <v-card-text>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="外框粗細"
+                            v-model="config.text.strokeSize"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-color-picker
+                            class="mx-auto"
+                            v-model="config.text.strokeColor"
+                            v-once
+                            :width="config.width"
+                            dot-size="25"
+                            mode="hexa"
+                            show-swatches
+                            swatches-max-height="100"
+                          ></v-color-picker>
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+                </v-tab-item>
+                <v-tab-item value="option-shadow">
+                  <v-card>
+                    <v-card-text>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="陰影擴展"
+                            v-model="config.shadow.size"
+                            min="0"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="X 偏移"
+                            v-model="config.shadow.offsetX"
+                            suffix="px"
+                          />
+                        </v-col>
+                        <v-col>
+                          <v-text-field
+                            type="number"
+                            label="Y 偏移"
+                            v-model="config.shadow.offsetY"
+                            suffix="px"
+                          />
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col>
+                          <v-color-picker
+                            class="mx-auto"
+                            v-model="config.shadow.color"
+                            v-once
+                            :width="config.width"
+                            dot-size="25"
+                            mode="hexa"
+                            show-swatches
+                            swatches-max-height="100"
+                          ></v-color-picker>
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+                </v-tab-item>
+              </v-tabs-items>
+            </div>
+          </v-expand-transition>
+        </v-card>
+      </template>
+    </div>
+  </body>
+</html>
