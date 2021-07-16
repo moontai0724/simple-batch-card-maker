@@ -181,6 +181,7 @@ function initialize() {
         progress: 0,
         file: null,
         image: null,
+        configFile: null,
         step: 1,
         defaults: {
           width: "1280",
@@ -219,6 +220,23 @@ function initialize() {
         reader.addEventListener("load", () => (this.image = reader.result));
         reader.readAsDataURL(file);
       },
+      configFile(file) {
+        if (!file) return null;
+        let reader = new FileReader();
+        reader.addEventListener("load", () => {
+          const result = JSON.parse(reader.result);
+          if (!(result.defaults && result.cards)) {
+            window.alert("檔案錯誤！");
+            return;
+          }
+          this.defaults = result.defaults;
+          this.cards = result.cards;
+        });
+        reader.readAsText(file);
+      },
+      cards() {
+        window.onbeforeunload = true;
+      },
       loadedCard(value) {
         this.processing = `卡片載入中... (${value}/${this.cards.length}) 請勿切換網頁或縮小。`;
         this.progress = value / this.cards.length;
@@ -232,6 +250,7 @@ function initialize() {
     methods: {
       createCards() {
         this.step++;
+        if (!this.text.replace(/\s/g, "")) return;
         this.loading = true;
         setTimeout(() => {
           let baseId = 1;
@@ -324,6 +343,7 @@ function initialize() {
                 200
               );
             } else {
+              window.onbeforeunload = null;
               this.loading = false;
               this.processing = "載入中... 請勿切換網頁或縮小。";
               this.progress = 0;

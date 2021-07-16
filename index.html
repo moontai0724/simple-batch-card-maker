@@ -61,11 +61,16 @@
                       選擇背景圖片
                     </v-stepper-step>
                     <v-divider></v-divider>
-                    <v-stepper-step editable step="2">
-                      調整預設設定
+                    <v-stepper-step step="2">
+                      匯入先前設定
+                      <small>選填</small>
                     </v-stepper-step>
                     <v-divider></v-divider>
                     <v-stepper-step editable step="3">
+                      調整預設設定
+                    </v-stepper-step>
+                    <v-divider></v-divider>
+                    <v-stepper-step editable step="4">
                       匯入文字
                     </v-stepper-step>
                   </v-stepper-header>
@@ -88,7 +93,7 @@
                           <v-spacer></v-spacer>
                           <v-btn
                             color="primary"
-                            @click="step++"
+                            @click="step += (this.configFile ? 2 : 1)"
                             :disabled="!image"
                           >
                             下一步
@@ -99,18 +104,15 @@
 
                     <v-stepper-content step="2" v-if="!!image">
                       <v-card flat>
-                        <v-card-title>調整預設設定</v-card-title>
+                        <v-card-title>匯入先前設定</v-card-title>
                         <v-card-text>
-                          <card
-                            v-if="image && step == 2"
-                            :id="0"
-                            :image="image"
-                            :width="defaults.width"
-                            :padding="defaults.padding"
-                            :text="defaults.text"
-                            :shadow="defaults.shadow"
-                            @update="v => Object.assign(defaults, v)"
-                          ></card>
+                          <v-file-input
+                            v-model="configFile"
+                            accept=".json"
+                            label="上傳設定檔"
+                            placeholder="config.json"
+                            prepend-icon="mdi-package-down"
+                          ></v-file-input>
                         </v-card-text>
                         <v-card-actions>
                           <v-spacer></v-spacer>
@@ -124,15 +126,45 @@
 
                     <v-stepper-content step="3" v-if="!!image">
                       <v-card flat>
-                        <v-card-title>匯入文字</v-card-title>
+                        <v-card-title>調整預設設定</v-card-title>
+                        <v-card-text>
+                          <card
+                            v-if="image && step == 3"
+                            :id="0"
+                            :image="image"
+                            :width="defaults.width"
+                            :padding="defaults.padding"
+                            :text="defaults.text"
+                            :shadow="defaults.shadow"
+                            @update="v => Object.assign(defaults, v)"
+                          ></card>
+                        </v-card-text>
+                        <v-card-actions>
+                          <v-spacer></v-spacer>
+                          <v-btn
+                            text
+                            @click="step -= (this.configFile ? 2 : 1)"
+                          >
+                            上一步
+                          </v-btn>
+                          <v-btn color="primary" @click="step++">
+                            下一步
+                          </v-btn>
+                        </v-card-actions>
+                      </v-card>
+                    </v-stepper-content>
+
+                    <v-stepper-content step="4" v-if="!!image">
+                      <v-card flat>
+                        <v-card-title>新增卡片</v-card-title>
                         <v-card-text>
                           <v-text-field
                             label="分隔符號"
                             :rules="[value => !!value || '請填入分隔符號',]"
                             :autofocus="!divider"
                             v-model="divider"
-                            placeholder="請輸入一個作為分割文字的符號，如: ';' 或是輸入 '\n' 以換行分割"
-                            hint="用於將整段卡片文字分割成多個"
+                            placeholder="請輸入一個作為分割文字的符號，如: ';' 輸入 '\n' 以換行分割，輸入 '\n\n' 以兩個換行分割"
+                            hint="請輸入一個作為分割文字的符號，用於將整段卡片文字分割成多個，可使用正則"
                             hide-details="auto"
                           ></v-text-field>
                           <br />
